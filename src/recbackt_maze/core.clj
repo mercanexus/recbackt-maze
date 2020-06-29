@@ -3,17 +3,18 @@
             [quil.middleware :as m])
   (:use [clojure.set]))
 
-(def maze-size 15)
-(def unit 30)
-(def cells-set (set (for [r (range maze-size) c (range maze-size)] [r c])))
+(def maze-size 30)
+(def unit 15)
+
+(defn bounds-check [[r c]]
+  (if (and (>= r 0) (< r maze-size) (>= c 0) (< c maze-size)) [r c]))
 
 (defn neighbour [cell dir]
-  (let [[x y] cell
-        n (cond (= dir 'west) [(- x 1) y]
-                (= dir 'east) [(+ x 1) y]
-                (= dir 'north) [x (- y 1)]
-                (= dir 'south) [x (+ y 1)])]
-    (if (contains? cells-set n) n)))
+  (let [[x y] cell]
+    (bounds-check (cond (= dir 'west) [(- x 1) y]
+                        (= dir 'east) [(+ x 1) y]
+                        (= dir 'north) [x (- y 1)]
+                        (= dir 'south) [x (+ y 1)]))))
 
 (defn neighbours [cell]
   (let [n (map #(neighbour cell %) '(north south east west))]
@@ -46,14 +47,16 @@
                 x' (inc x)]
             (list (point n) (point [x' y]))))))
 
-(defn eastwalls []
-  (filter #(not (nil? %)) (map eastwall-pp cells-set)))
+(defn init-walls []
+  (let [cells (for [r (range maze-size) c (range maze-size)] [r c])]
+    (set (filter #(not (nil? %))
+                 (concat (map eastwall-pp cells) (map southwall-pp cells))))))
 
-(defn southwalls []
-  (filter #(not (nil? %)) (map southwall-pp cells-set)))
-
-(defn walls []
-  (set (concat (eastwalls) (southwalls))))
+(defn next-cell [state]
+  (let [{:keys [cell visited]} state
+        nbs (difference (set (neighbours cell)) visited)]
+    (if (empty? nbs) nil
+        (rand-nth (seq nbs)))))
 
 (defn next-dir [cell next]
   (let [[cx cy] cell
@@ -69,19 +72,6 @@
         (= dir 'north) (northwall-pp cell)
         (= dir 'south) (southwall-pp cell)))
 
-(defn setup []
-  (q/frame-rate 10)
-  {:visited #{[0 0]}
-   :cell [0 0]
-   :track '([0 0])
-   :walls (walls)})
-
-(defn next-cell [state]
-  (let [{:keys [cell visited]} state
-        nbs (difference (set (neighbours cell)) visited)]
-    (if (empty? nbs) nil
-        (rand-nth (seq nbs)))))
-
 (defn draw-track [l]
   (if (not (empty? l))
     (doall (map #(let [[x y] %] (q/rect (* x unit) (* y unit) unit unit)) l))))
@@ -90,6 +80,13 @@
   (let [{:keys [track cell]} state]
     (if (empty? track) state
         (assoc state :cell (first track) :track (rest track) ))))
+
+(defn setup []
+  (q/frame-rate 30)
+  {:visited #{[0 0]}
+   :cell [0 0]
+   :track '([0 0])
+   :walls (init-walls)})
 
 (defn update-state [state]
   (let [next (next-cell state)
