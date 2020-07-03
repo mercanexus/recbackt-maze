@@ -77,10 +77,11 @@
 
 (defn setup []
   (q/frame-rate 30)
-  {:visited #{[0 0]}
-   :cell [0 0]
-   :track '([0 0])
-   :walls (init-walls)})
+  (let [x (rand-int size) y (rand-int size)]
+    {:visited #{[x y]}
+     :cell [x y]
+     :track (list [x y])
+     :walls (init-walls)}))
 
 (defn update-state [state]
   (let [next (next-cell state)
