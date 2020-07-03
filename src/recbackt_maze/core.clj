@@ -3,60 +3,54 @@
             [quil.middleware :as m])
   (:use [clojure.set]))
 
-(def maze-size 30)
+(def size 30)
 (def unit 15)
 
-(defn bounds-check [[r c]]
-  (if (and (>= r 0) (< r maze-size) (>= c 0) (< c maze-size)) [r c]))
+(defn bounds-check [[x y]]
+  (if (and (>= x 0) (< x size) (>= y 0) (< y size)) [x y]))
 
-(defn neighbour [cell dir]
+(defn adjacent [cell dir]
   (let [[x y] cell]
     (bounds-check (cond (= dir 'west) [(- x 1) y]
                         (= dir 'east) [(+ x 1) y]
                         (= dir 'north) [x (- y 1)]
                         (= dir 'south) [x (+ y 1)]))))
 
-(defn neighbours [cell]
-  (let [n (map #(neighbour cell %) '(north south east west))]
-    (filter #(not (nil? %)) n)))
+(defn cells-adjacent-to [cell]
+  (filter #(not (nil? %)) (map #(adjacent cell %) '(north south east west))))
 
 (defn point [cell]
   (vec (map #(* % unit) cell)))
 
 (defn eastwall-pp [cell]
-  (let [n (neighbour cell 'east)]
-    (if n (let [[x y] n
-                y' (inc y)]
-            (list (point n) (point [x y']))))))
+  (let [n (adjacent cell 'east)]
+    (if n (let [[x y] n]
+            (list (point n) (point [x (inc y)]))))))
 
 (defn westwall-pp [cell]
-  (let [n (neighbour cell 'west)]
-    (if n (let [[x y] cell
-                y' (inc y)]
-            (list (point cell) (point [x y']))))))
+  (let [n (adjacent cell 'west)]
+    (if n (let [[x y] cell]
+            (list (point cell) (point [x (inc y)]))))))
 
 (defn northwall-pp [cell]
-  (let [n (neighbour cell 'north)]
-    (if n (let [[x y] cell
-                x' (inc x)]
-            (list (point cell) (point [x' y]))))))
+  (let [n (adjacent cell 'north)]
+    (if n (let [[x y] cell]
+            (list (point cell) (point [(inc x) y]))))))
 
 (defn southwall-pp [cell]
-  (let [n (neighbour cell 'south)]
-    (if n (let [[x y] n
-                x' (inc x)]
-            (list (point n) (point [x' y]))))))
+  (let [n (adjacent cell 'south)]
+    (if n (let [[x y] n]
+            (list (point n) (point [(inc x) y]))))))
 
 (defn init-walls []
-  (let [cells (for [r (range maze-size) c (range maze-size)] [r c])]
+  (let [cells (for [x (range size) y (range size)] [x y])]
     (set (filter #(not (nil? %))
                  (concat (map eastwall-pp cells) (map southwall-pp cells))))))
 
 (defn next-cell [state]
   (let [{:keys [cell visited]} state
-        nbs (difference (set (neighbours cell)) visited)]
-    (if (empty? nbs) nil
-        (rand-nth (seq nbs)))))
+        cells (difference (set (cells-adjacent-to cell)) visited)]
+    (if (empty? cells) nil (rand-nth (seq cells)))))
 
 (defn next-dir [cell next]
   (let [[cx cy] cell
@@ -107,7 +101,7 @@
   (q/stroke 0)
   (doall (map #(apply q/line %) (:walls state)))
   (q/no-fill)
-  (q/rect 0 0 (* maze-size unit) (* maze-size unit)))
+  (q/rect 0 0 (* size unit) (* size unit)))
 
 (q/defsketch recbackt-maze
   :title "Recursive Backtracking Maze Generator"
